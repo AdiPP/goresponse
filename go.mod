@@ -1,5 +1,5 @@
-module github.res/AdiPP/goresponse
+module github.com/AdiPP/goresponse
 
 go 1.18
 
-require github.com/lvqingan/gopager v0.0.0-20181023084443-abb9c20ed52e // indirect
+require github.com/lvqingan/gopager v0.0.0-20181023084443-abb9c20ed52e
