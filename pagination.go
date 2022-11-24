@@ -13,6 +13,7 @@ type meta struct {
 
 func newMeta(pagination map[string]interface{}) meta {
 	delete(pagination, "data")
+	delete(pagination, "prev_page_url")
 
 	return meta{
 		Pagination: pagination,
@@ -32,17 +33,21 @@ type Pagination struct {
 type PaginationFromLengthAwarePaginatorOpt struct {
 	Message    string
 	Paginator  *gopager.TLengthAwarePaginator
+	Query      map[string][]string
 	Error      any
 	StatusCode int
 }
 
 func NewPaginationFromLengthAwarePaginator(opt *PaginationFromLengthAwarePaginatorOpt) *Pagination {
+	paginator := opt.Paginator
+	paginator.Appends(opt.Query)
+
 	return &Pagination{
 		Message:    opt.Message,
 		Data:       opt.Paginator.Items,
 		Error:      opt.Error,
 		statusCode: opt.StatusCode,
-		Meta:       newMeta(opt.Paginator.GetStringMap()),
+		Meta:       newMeta(paginator.GetStringMap()),
 	}
 }
 
