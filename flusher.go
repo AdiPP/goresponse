@@ -5,7 +5,8 @@ import (
 )
 
 type Response interface {
-	JSON(w http.ResponseWriter, r *http.Request)
+	StatusCode() int
+	JSONMarshal() ([]byte, error)
 }
 
 type Flusher struct {
@@ -21,5 +22,18 @@ func NewFlusher(writer http.ResponseWriter, req *http.Request) *Flusher {
 }
 
 func (f *Flusher) JSON(res Response) {
-	res.JSON(f.w, f.r)
+	var resBytes []byte
+	var err error
+
+	if resBytes, err = res.JSONMarshal(); err != nil {
+		return
+	}
+
+	f.w.Header().Set("Content-Type", "application/json")
+	f.w.WriteHeader(res.StatusCode())
+
+	if _, err = f.w.Write(resBytes); err != nil {
+		return
+	}
+
 }

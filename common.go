@@ -2,17 +2,14 @@ package goresponse
 
 import (
 	"encoding/json"
-	"net/http"
 	"reflect"
 )
 
-type Common struct {
-	Status  bool   `json:"status,omitempty"`
+type JSONCommon struct {
+	Status  bool   `json:"status"`
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
 	Error   any    `json:"error,omitempty"`
-
-	statusCode int
 }
 
 type CommonOpt struct {
@@ -22,56 +19,73 @@ type CommonOpt struct {
 	StatusCode int
 }
 
+type Common struct {
+	status     bool
+	message    string
+	data       any
+	error      any
+	statusCode int
+}
+
 func NewCommon(cfg *CommonOpt) *Common {
 	return &Common{
-		Message:    cfg.Message,
-		Data:       cfg.Data,
-		Error:      cfg.Error,
+		message:    cfg.Message,
+		data:       cfg.Data,
+		error:      cfg.Error,
 		statusCode: cfg.StatusCode,
 	}
 }
 
-func (c *Common) validate() {
-	if c.Error != nil {
-		c.writeError()
-		return
-	}
-
-	c.writeSuccess()
-	return
-}
-
-func (c *Common) writeSuccess() {
+func (c *Common) writeJSONSuccess() JSONCommon {
 	if reflect.ValueOf(c.statusCode).IsZero() {
 		c.statusCode = 200
 	}
 
-	c.Status = true
+	if IsFailed(c.statusCode) {
+		return c.writeJSONError()
+	}
+
+	c.status = true
+
+	return c.toJSON()
 }
 
-func (c *Common) writeError() {
+func (c *Common) writeJSONError() JSONCommon {
 	if reflect.ValueOf(c.statusCode).IsZero() {
 		c.statusCode = 500
 	}
 
-	c.Status = false
-	c.Data = nil
+	c.status = false
+	c.data = nil
+
+	return c.toJSON()
 }
 
-func (c *Common) JSON(w http.ResponseWriter, _ *http.Request) {
-	c.validate()
+func (c *Common) Message() string {
+	return c.message
+}
 
-	var resBytes []byte
-	var err error
+func (c *Common) StatusCode() int {
+	return c.statusCode
+}
 
-	if resBytes, err = json.Marshal(c); err != nil {
-		return
+func (c *Common) toJSON() JSONCommon {
+	return JSONCommon{
+		Status:  c.status,
+		Message: c.message,
+		Data:    c.data,
+		Error:   c.error,
+	}
+}
+
+func (c *Common) JSONMarshal() ([]byte, error) {
+	var jsonCommon JSONCommon
+
+	if c.error != nil {
+		jsonCommon = c.writeJSONError()
+	} else {
+		jsonCommon = c.writeJSONSuccess()
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(c.statusCode)
-
-	if _, err = w.Write(resBytes); err != nil {
-		return
-	}
+	return json.Marshal(jsonCommon)
 }

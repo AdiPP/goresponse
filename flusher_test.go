@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/lvqingan/gopager"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,25 +31,25 @@ func TestFlusher_CommonResponse(t *testing.T) {
 		}
 	}(res.Body)
 
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 
 	if err != nil {
 		t.Errorf("got error %v", err)
 	}
 
-	var common Common
-	err = json.Unmarshal(resBody, &common)
+	var jsonCommon JSONCommon
+	err = json.Unmarshal(resBody, &jsonCommon)
 
-	if common.Message != response.Message {
-		t.Errorf("expected %v got %v", response.Message, common.Message)
+	if jsonCommon.Message != response.Message() {
+		t.Errorf("expected %v got %v", response.Message(), jsonCommon.Message)
 	}
 
 	if res.StatusCode != statusCode {
 		t.Errorf("expected %v got %v", statusCode, res.Status)
 	}
 
-	if common.Status != true {
-		t.Errorf("expected %v got %v", true, common.Status)
+	if jsonCommon.Status != true {
+		t.Errorf("expected %v got %v", true, jsonCommon.Status)
 	}
 }
 
@@ -91,24 +90,24 @@ func TestFlusher_PaginationFromPaginator(t *testing.T) {
 		}
 	}(res.Body)
 
-	resBody, err := ioutil.ReadAll(res.Body)
+	resBody, err := io.ReadAll(res.Body)
 
 	if err != nil {
 		t.Errorf("got error %v", err)
 	}
 
-	var pagination Pagination
-	err = json.Unmarshal(resBody, &pagination)
+	var jsonPagination JSONPagination
+	err = json.Unmarshal(resBody, &jsonPagination)
 
-	if pagination.Message != response.Message {
-		t.Errorf("expecyed %v got %v", response.Message, pagination.Message)
+	if jsonPagination.Message != response.Message() {
+		t.Errorf("expecyed %v got %v", response.Message(), jsonPagination.Message)
 	}
 
 	if res.StatusCode != statusCode {
 		t.Errorf("expected %v got %v", statusCode, res.Status)
 	}
 
-	if pagination.Status != true {
-		t.Errorf("expected %v got %v", true, response.Status)
+	if jsonPagination.Status != true {
+		t.Errorf("expected %v got %v", true, jsonPagination.Status)
 	}
 }

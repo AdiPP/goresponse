@@ -3,7 +3,6 @@ package goresponse
 import (
 	"encoding/json"
 	"github.com/lvqingan/gopager"
-	"net/http"
 	"reflect"
 )
 
@@ -20,14 +19,12 @@ func newMeta(pagination map[string]interface{}) meta {
 	}
 }
 
-type Pagination struct {
+type JSONPagination struct {
 	Status  bool   `json:"status,omitempty"`
 	Message string `json:"message,omitempty"`
 	Data    any    `json:"data,omitempty"`
 	Error   any    `json:"error,omitempty"`
 	Meta    meta   `json:"meta"`
-
-	statusCode int
 }
 
 type PaginationFromLengthAwarePaginatorOpt struct {
@@ -38,60 +35,79 @@ type PaginationFromLengthAwarePaginatorOpt struct {
 	StatusCode int
 }
 
+type Pagination struct {
+	status     bool
+	message    string
+	data       any
+	error      any
+	meta       meta
+	statusCode int
+}
+
 func NewPaginationFromLengthAwarePaginator(opt *PaginationFromLengthAwarePaginatorOpt) *Pagination {
 	paginator := opt.Paginator
 	paginator.Appends(opt.Query)
 
 	return &Pagination{
-		Message:    opt.Message,
-		Data:       opt.Paginator.Items,
-		Error:      opt.Error,
+		message:    opt.Message,
+		data:       opt.Paginator.Items,
+		error:      opt.Error,
 		statusCode: opt.StatusCode,
-		Meta:       newMeta(paginator.GetStringMap()),
+		meta:       newMeta(paginator.GetStringMap()),
 	}
 }
 
-func (p *Pagination) validate() {
-	if p.Error != nil {
-		p.writeError()
-		return
-	}
-
-	p.writeSuccess()
-	return
-}
-
-func (p *Pagination) writeSuccess() {
+func (p *Pagination) writeJSONSuccess() JSONPagination {
 	if reflect.ValueOf(p.statusCode).IsZero() {
 		p.statusCode = 200
 	}
 
-	p.Status = true
+	if IsFailed(p.statusCode) {
+		return p.writeJSONError()
+	}
+
+	p.status = true
+
+	return p.toJSON()
 }
 
-func (p *Pagination) writeError() {
+func (p *Pagination) writeJSONError() JSONPagination {
 	if reflect.ValueOf(p.statusCode).IsZero() {
 		p.statusCode = 500
 	}
 
-	p.Status = false
-	p.Data = nil
+	p.status = false
+	p.data = nil
+
+	return p.toJSON()
 }
 
-func (p *Pagination) JSON(w http.ResponseWriter, _ *http.Request) {
-	p.validate()
+func (p *Pagination) Message() string {
+	return p.message
+}
 
-	var resBytes []byte
-	var err error
+func (p *Pagination) StatusCode() int {
+	return p.statusCode
+}
 
-	if resBytes, err = json.Marshal(p); err != nil {
-		return
+func (p *Pagination) toJSON() JSONPagination {
+	return JSONPagination{
+		Status:  p.status,
+		Message: p.message,
+		Data:    p.data,
+		Error:   p.error,
+		Meta:    p.meta,
+	}
+}
+
+func (p *Pagination) JSONMarshal() ([]byte, error) {
+	var jsonCommon JSONPagination
+
+	if p.error != nil {
+		jsonCommon = p.writeJSONError()
+	} else {
+		jsonCommon = p.writeJSONSuccess()
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(p.statusCode)
-
-	if _, err = w.Write(resBytes); err != nil {
-		return
-	}
+	return json.Marshal(jsonCommon)
 }
