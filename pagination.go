@@ -91,6 +91,12 @@ func (p *Pagination) StatusCode() int {
 }
 
 func (p *Pagination) toJSON() JSONPagination {
+	errBytes, _ := json.Marshal(p.error)
+
+	if string(errBytes) == `{}` {
+		p.error = p.error.(error).Error()
+	}
+
 	return JSONPagination{
 		Status:  p.status,
 		Message: p.message,

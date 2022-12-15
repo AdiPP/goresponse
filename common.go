@@ -70,6 +70,12 @@ func (c *Common) StatusCode() int {
 }
 
 func (c *Common) toJSON() JSONCommon {
+	errBytes, _ := json.Marshal(c.error)
+
+	if string(errBytes) == `{}` {
+		c.error = c.error.(error).Error()
+	}
+
 	return JSONCommon{
 		Status:  c.status,
 		Message: c.message,
